@@ -1,6 +1,5 @@
 <template>
-  <div id="app">
-    <h1>Vue 书本翻页动画</h1>
+  <div id="main">
     <TurnBookFlip />
   </div>
 </template>
@@ -22,20 +21,23 @@ export default {
 </script>
 
 <style>
-#app {
+#main {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
 }
+html {
+  width: 100%;
+  height: 100%;
+} 
 
 body {
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   background-color: #e5e5e5;

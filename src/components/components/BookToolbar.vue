@@ -64,7 +64,7 @@ export default {
 <style scoped>
 .toolbar {
   position: absolute;
-  right: -240px;
+  right: 40px;
   bottom: 130px;
   width: 160px;
   background: var(--toolbar-bg);

@@ -79,9 +79,11 @@ export default {
     this.$nextTick(() => {
       this.initializeTurnJS();
     });
+    window.addEventListener('resize', this.handleResize);
   },
   beforeUnmount() {
     this.cleanupTurnJS();
+    window.removeEventListener('resize', this.handleResize);
   },
   methods: {
     initializeTurnJS() {
@@ -116,6 +118,16 @@ export default {
       setTimeout(() => {
         this.turnInstance = initTurnJS(this.$refs.bookElement, callbacks);
       }, 300);
+    },
+
+    // 监听窗口大小变化
+    handleResize() {
+      console.log('handleResize');
+      // 重新初始化
+      // TODO:重新初始化有报错
+      setTimeout(() => {
+        this.initializeTurnJS();
+      }, 1000);
     },
     
     reinitializeTurnJS() {
@@ -175,7 +187,7 @@ export default {
   bottom: 0;
   left: -20px;
   width: 20px;
-  height: 500px;
+  height: 100%;
   background: linear-gradient(to right, var(--stack-edge-color1), var(--stack-edge-color2));
   box-shadow: -2px 0 5px var(--shadow-color);
   z-index: -2;
@@ -190,7 +202,7 @@ export default {
   bottom: 0;
   right: -20px;
   width: 20px;
-  height: 500px;
+  height: 100%;
   background: linear-gradient(to left, var(--stack-edge-color1), var(--stack-edge-color2));
   box-shadow: 2px 0 5px var(--shadow-color);
   z-index: -2;
