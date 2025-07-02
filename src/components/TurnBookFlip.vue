@@ -579,7 +579,7 @@ export default {
 }
 
 .toc {
-  padding: 30px;
+  /* padding: 30px; */
   font-size: 16px;
 }
 
