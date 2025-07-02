@@ -28,7 +28,7 @@
       >
         <div class="page-content" v-html="page"></div>
       </div>
-      <div class="page back-cover">谢谢阅读</div>
+      <div class="page back-cover">thanks</div>
     </div>
 
     <div class="controls">
@@ -45,6 +45,24 @@
 <script>
 import { testData } from "./testData.js";
 
+// 书本配置常量
+const BOOK_CONFIG = {
+  width: 800,
+  height: 500,
+  pageWidth: 350,     // 页面内容宽度
+  pageHeight: 460,    // 页面内容高度（减去边距）
+  fontSizePx: 16,
+  lineHeight: 1.5,
+  padding: 20,
+  animationDuration: 600, // 翻页动画持续时间
+};
+
+// 分页断句符号列表
+const NATURAL_BREAKS = [
+  "。", "，", "！", "？", "；", "：", " ", ")", "）", "》", "\u201D",
+  ".", ",", "!", "?", ";", ":", " ", ">", '"',
+];
+
 export default {
   name: "TurnBookFlip",
   data() {
@@ -59,49 +77,61 @@ export default {
       isBookOpened: false,
     };
   },
-  mounted() {
-    this.$nextTick(() => {
-      // 解析富文本内容
-      this.content = testData;
-      this.content = this.convertImg(this.content);
-      // 提取章节标题
-      this.extractSections();
-
-      // 计算分页
-      this.calculatePages();
-
-      // 生成目录
-      this.generateTableOfContents();
-
-      // 延迟初始化turn.js以确保DOM已更新
-      setTimeout(() => {
-        // Initialize turn.js
-        this.initTurnJS();
-      }, 1000);
-    });
-  },
-  beforeUnmount() {
-    // Clean up turn.js instance
-    if (this.turnInstance && this.$refs.turnBook) {
-      window.$(this.$refs.turnBook).turn("destroy");
-      this.turnInstance = null;
+  computed: {
+    // 封面、目录、内容、封底的总页数
+    totalPageCount() {
+      return 2 + this.pages.length + 1;
     }
   },
+  mounted() {
+    this.initializeBook();
+  },
+  beforeUnmount() {
+    this.cleanupTurnJS();
+  },
   methods: {
+    /**
+     * 初始化电子书
+     */
+    initializeBook() {
+      this.$nextTick(() => {
+        // 处理内容
+        this.content = this.convertImg(testData);
+        
+        // 解析内容和分页
+        this.extractSections();
+        this.calculatePages();
+        this.generateTableOfContents();
+
+        // 延迟初始化turn.js以确保DOM已更新
+        setTimeout(() => {
+          this.initTurnJS();
+        }, 300);
+      });
+    },
+
+    /**
+     * 清理turn.js实例
+     */
+    cleanupTurnJS() {
+      if (this.turnInstance && this.$refs.turnBook) {
+        window.$(this.$refs.turnBook).turn("destroy");
+        this.turnInstance = null;
+      }
+    },
+
+    /**
+     * 提取章节信息
+     */
     extractSections() {
-      // 提取内容中的章节标题
-      // 在这个示例中，我们将 <br><br> 后跟非 <br> 开头的大段文字作为新章节的开始
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = this.content;
-
-      // 将HTML转换为纯文本，保留<br>作为换行符
       const text = tempDiv.innerHTML;
-      console.log("text", text);
-
-      // 简单处理：把文本按段落分割
+      
+      // 按段落分割
       const paragraphs = text.split("<br><br>");
-      console.log("paragraphs", paragraphs);
-      // 找到像标题的段落（如"家譜是什麼？"和"尋找家譜"）
+      
+      // 提取章节
       this.sections = [];
       let currentSection = { title: "", content: [] };
 
@@ -113,290 +143,347 @@ export default {
       if (currentSection.content.length > 0) {
         this.sections.push(currentSection);
       }
-      console.log("sections", this.sections);
     },
 
+    /**
+     * 计算分页
+     */
     calculatePages() {
-      // 创建测试容器来计算内容高度
-      const testContainer = this.$refs.testContainer;
-      testContainer.style.width = "350px"; // 页面宽度减去边距
-      testContainer.style.height = "auto";
-      testContainer.style.visibility = "hidden";
-      testContainer.style.position = "absolute";
-      testContainer.style.fontSize = "16px";
-      testContainer.style.lineHeight = "1.5";
-      testContainer.style.padding = "20px";
-      testContainer.style.boxSizing = "border-box";
-
+      // 设置测试容器
+      this.setupTestContainer();
+      
       // 计算每页的内容
-      const maxHeight = 460; // 页面高度减去边距
       this.pages = [];
-
+      
       // 解析原始内容为DOM元素，以便更精确计算
       const contentDiv = document.createElement("div");
       contentDiv.innerHTML = this.content;
       const allParagraphs = this.extractParagraphs(contentDiv);
 
+      // 分页处理
+      this.paginateContent(allParagraphs);
+      
+      // 更新总页数
+      this.totalPages = this.totalPageCount;
+    },
+
+    /**
+     * 设置用于测试内容高度的容器
+     */
+    setupTestContainer() {
+      const testContainer = this.$refs.testContainer;
+      Object.assign(testContainer.style, {
+        width: `${BOOK_CONFIG.pageWidth}px`,
+        height: "auto",
+        visibility: "hidden",
+        position: "absolute",
+        fontSize: `${BOOK_CONFIG.fontSizePx}px`,
+        lineHeight: String(BOOK_CONFIG.lineHeight),
+        padding: `${BOOK_CONFIG.padding}px`,
+        boxSizing: "border-box",
+      });
+    },
+
+    /**
+     * 分页处理内容
+     * @param {Array} paragraphs - 段落数组
+     */
+    paginateContent(paragraphs) {
+      const testContainer = this.$refs.testContainer;
+      const maxHeight = BOOK_CONFIG.pageHeight;
       let currentPage = "";
 
-      // 处理所有段落
-      for (let index = 0; index < allParagraphs.length; index++) {
-        const item = allParagraphs[index];
+      for (let index = 0; index < paragraphs.length; index++) {
+        const item = paragraphs[index];
         
-        // 检查段落是否包含图片元素
-        const hasImage = item.content.includes('<div class="source-card"') && item.content.includes('<img');
+        // 检查是否为图片段落
+        const hasImage = this.isImageParagraph(item.content);
         
-        // 如果段落包含图片，检查当前页是否已接近最大高度
+        // 图片段落特殊处理
         if (hasImage) {
-          testContainer.innerHTML = currentPage;
-          const currentHeight = testContainer.offsetHeight;
-          
-          // 如果当前页已经达到最大高度的75%以上，先保存当前页，然后将图片放在新页面上
-          if (currentHeight > maxHeight * 0.75) {
-            // 保存当前页
-            if (currentPage.trim()) {
-              this.pages.push(currentPage);
-              currentPage = "";
-            }
-            
-            // 将图片段落添加到新页面
-            currentPage = `<p>${item.content}</p>`;
-            continue;
-          }
+          currentPage = this.handleImageParagraph(item, currentPage, testContainer, maxHeight);
+          continue;
         }
         
-        // 普通段落，测试添加到当前页后的高度
-        const testContent = currentPage + `<p>${item.content}</p>`;
-        testContainer.innerHTML = testContent;
-        const newHeight = testContainer.offsetHeight;
-
-        // 如果添加这个段落会超出页面高度
-        if (newHeight > maxHeight) {
-          // 检查是否为包含图片的段落
-          if (hasImage) {
-            // 如果是图片段落且超出高度，保存当前页并在新页面显示图片
-            if (currentPage.trim()) {
-              this.pages.push(currentPage);
-              currentPage = `<p>${item.content}</p>`;
-            } else {
-              // 如果当前页为空，说明图片太大，直接作为一页
-              currentPage = `<p>${item.content}</p>`;
-              this.pages.push(currentPage);
-              currentPage = "";
-            }
-          } else {
-            // 非图片段落，使用原来的分割逻辑
-            // 尝试在段落内找到合适的分割点
-            let start = 0;
-            let end = item.content.length;
-            let mid = Math.floor((start + end) / 2);
-            let foundExactFit = false;
-
-            // 限制查找次数，避免无限循环
-            const maxIterations = 20;
-            let iterations = 0;
-
-            while (start < end && iterations < maxIterations) {
-              iterations++;
-
-              // 测试当前位置分割的内容是否适合当前页面
-              const testFirstPart =
-                currentPage + `<p>${item.content.substring(0, mid)}</p>`;
-              testContainer.innerHTML = testFirstPart;
-              const testHeight = testContainer.offsetHeight;
-
-              // 找到最接近但不超过最大高度的分割点
-              if (testHeight <= maxHeight) {
-                if (mid === item.content.length - 1 || start === mid) {
-                  // 已经找到最佳分割点或者无法再优化
-                  foundExactFit = true;
-                  break;
-                }
-                start = mid;
-              } else {
-                end = mid;
-              }
-
-              mid = Math.floor((start + end) / 2);
-            }
-
-            // 如果找到合适的分割点
-            if (foundExactFit || mid > 0) {
-              // 在分割点附近找到一个自然的断句点（如句号、逗号、问号等）
-              let breakPoint = mid;
-              const naturalBreaks = [
-                "。",
-                "，",
-                "！",
-                "？",
-                "；",
-                "：",
-                " ",
-                ")",
-                "）",
-                "》",
-                "\u201D",
-                ".",
-                ",",
-                "!",
-                "?",
-                ";",
-                ":",
-                " ",
-                ">",
-                '"',
-              ];
-
-              // 向后查找30个字符内是否有自然断句点
-              const searchRange = Math.min(30, item.content.length - mid);
-              for (let i = 0; i < searchRange; i++) {
-                if (naturalBreaks.includes(item.content[mid + i])) {
-                  breakPoint = mid + i + 1; // 在断句点之后分割
-                  break;
-                }
-              }
-
-              // 如果向后没找到，向前查找15个字符
-              if (breakPoint === mid && mid > 15) {
-                for (let i = 1; i <= 15; i++) {
-                  if (naturalBreaks.includes(item.content[mid - i])) {
-                    breakPoint = mid - i + 1; // 在断句点之后分割
-                    break;
-                  }
-                }
-              }
-
-              // 分割段落
-              const firstPart = item.content.substring(0, breakPoint);
-              const remainingPart = item.content.substring(breakPoint);
-
-              // 将第一部分添加到当前页
-              currentPage += `<p>${firstPart}</p>`;
-              this.pages.push(currentPage);
-
-              // 开始新的页面，包含剩余部分
-              currentPage = `<p>${remainingPart}</p>`;
-              testContainer.innerHTML = currentPage;
-              continue; // 继续处理下一个段落
-            } else {
-              // 如果无法找到合适的分割点
-              this.pages.push(currentPage);
-              currentPage = `<p>${item.content}</p>`;
-              testContainer.innerHTML = currentPage;
-            }
-          }
-        } else {
-          // 段落可以添加到当前页面
-          currentPage += `<p>${item.content}</p>`;
-        }
-
+        // 普通段落处理
+        const { newCurrentPage } = this.handleTextParagraph(
+          item, currentPage, testContainer, maxHeight
+        );
+        
+        currentPage = newCurrentPage;
+        
         // 如果这是最后一个段落，保存当前页面
-        if (index === allParagraphs.length - 1 && currentPage) {
+        if (index === paragraphs.length - 1 && currentPage) {
           this.pages.push(currentPage);
         }
       }
-
-      // 更新总页数（封面 + 目录 + 内容页 + 封底）
-      this.totalPages = 2 + this.pages.length + 1;
     },
 
+    /**
+     * 判断是否为图片段落
+     * @param {String} content - 段落内容
+     * @returns {Boolean}
+     */
+    isImageParagraph(content) {
+      return content.includes('<div class="source-card"') && content.includes('<img');
+    },
+    
+    /**
+     * 处理图片段落
+     * @param {Object} item - 段落对象
+     * @param {String} currentPage - 当前页面内容
+     * @param {HTMLElement} testContainer - 测试容器
+     * @param {Number} maxHeight - 最大高度
+     * @returns {String} - 处理后的当前页内容
+     */
+    handleImageParagraph(item, currentPage, testContainer, maxHeight) {
+      testContainer.innerHTML = currentPage;
+      const currentHeight = testContainer.offsetHeight;
+      
+      // 如果当前页已经达到最大高度的75%以上，先保存当前页，然后将图片放在新页面上
+      if (currentHeight > maxHeight * 0.75) {
+        // 保存当前页
+        if (currentPage.trim()) {
+          this.pages.push(currentPage);
+          return `<p>${item.content}</p>`;
+        }
+      }
+      
+      // 测试添加图片后的高度
+      const testContent = currentPage + `<p>${item.content}</p>`;
+      testContainer.innerHTML = testContent;
+      const newHeight = testContainer.offsetHeight;
+      
+      // 如果添加这个图片会超出页面高度
+      if (newHeight > maxHeight) {
+        if (currentPage.trim()) {
+          this.pages.push(currentPage);
+          return `<p>${item.content}</p>`;
+        } else {
+          // 如果当前页为空，说明图片太大，直接作为一页
+          this.pages.push(`<p>${item.content}</p>`);
+          return "";
+        }
+      } else {
+        // 图片可以添加到当前页面
+        return currentPage + `<p>${item.content}</p>`;
+      }
+    },
+    
+    /**
+     * 处理普通文本段落
+     * @param {Object} item - 段落对象
+     * @param {String} currentPage - 当前页面内容
+     * @param {HTMLElement} testContainer - 测试容器
+     * @param {Number} maxHeight - 最大高度
+     * @returns {Object} - {newCurrentPage}
+     */
+    handleTextParagraph(item, currentPage, testContainer, maxHeight) {
+      // 测试添加到当前页后的高度
+      const testContent = currentPage + `<p>${item.content}</p>`;
+      testContainer.innerHTML = testContent;
+      const newHeight = testContainer.offsetHeight;
+
+      // 如果添加这个段落会超出页面高度
+      if (newHeight > maxHeight) {
+        // 尝试在段落内找到合适的分割点
+        const { firstPart, remainingPart } = this.findOptimalSplitPoint(
+          item.content, currentPage, testContainer, maxHeight
+        );
+
+        // 将第一部分添加到当前页
+        const updatedCurrentPage = currentPage + `<p>${firstPart}</p>`;
+        this.pages.push(updatedCurrentPage);
+
+        // 返回新的页面，包含剩余部分
+        return {
+          newCurrentPage: remainingPart ? `<p>${remainingPart}</p>` : ""
+        };
+      } else {
+        // 段落可以添加到当前页面
+        return {
+          newCurrentPage: currentPage + `<p>${item.content}</p>`
+        };
+      }
+    },
+
+    /**
+     * 寻找最优分割点
+     * @param {String} content - 段落内容
+     * @param {String} currentPage - 当前页面内容
+     * @param {HTMLElement} testContainer - 测试容器
+     * @param {Number} maxHeight - 最大高度
+     * @returns {Object} - {firstPart, remainingPart}
+     */
+    findOptimalSplitPoint(content, currentPage, testContainer, maxHeight) {
+      let start = 0;
+      let end = content.length;
+      let mid = Math.floor((start + end) / 2);
+      let foundExactFit = false;
+
+      // 二分查找最佳分割点
+      const maxIterations = 20;
+      let iterations = 0;
+
+      while (start < end && iterations < maxIterations) {
+        iterations++;
+
+        // 测试当前位置分割的内容是否适合当前页面
+        const testFirstPart = currentPage + `<p>${content.substring(0, mid)}</p>`;
+        testContainer.innerHTML = testFirstPart;
+        const testHeight = testContainer.offsetHeight;
+
+        // 找到最接近但不超过最大高度的分割点
+        if (testHeight <= maxHeight) {
+          if (mid === content.length - 1 || start === mid) {
+            // 已经找到最佳分割点或者无法再优化
+            foundExactFit = true;
+            break;
+          }
+          start = mid;
+        } else {
+          end = mid;
+        }
+
+        mid = Math.floor((start + end) / 2);
+      }
+
+      // 如果找到合适的分割点
+      if (foundExactFit || mid > 0) {
+        // 在分割点附近找到一个自然的断句点
+        let breakPoint = this.findNaturalBreakPoint(content, mid);
+
+        // 分割段落
+        const firstPart = content.substring(0, breakPoint);
+        const remainingPart = content.substring(breakPoint);
+
+        return { firstPart, remainingPart };
+      } else {
+        // 无法找到合适的分割点
+        return { firstPart: "", remainingPart: content };
+      }
+    },
+
+    /**
+     * 查找自然断句点
+     * @param {String} content - 内容
+     * @param {Number} position - 当前位置
+     * @returns {Number} - 断句点位置
+     */
+    findNaturalBreakPoint(content, position) {
+      let breakPoint = position;
+      
+      // 向后查找30个字符内是否有自然断句点
+      const forwardRange = Math.min(30, content.length - position);
+      for (let i = 0; i < forwardRange; i++) {
+        if (NATURAL_BREAKS.includes(content[position + i])) {
+          breakPoint = position + i + 1; // 在断句点之后分割
+          return breakPoint;
+        }
+      }
+
+      // 如果向后没找到，向前查找15个字符
+      if (breakPoint === position && position > 15) {
+        for (let i = 1; i <= 15; i++) {
+          if (NATURAL_BREAKS.includes(content[position - i])) {
+            breakPoint = position - i + 1; // 在断句点之后分割
+            return breakPoint;
+          }
+        }
+      }
+      
+      return breakPoint;
+    },
+
+    /**
+     * 转换图片内容
+     * @param {String} content - 原始内容
+     * @returns {String} - 转换后的内容
+     */
     convertImg(content) {
       const imgReg = /<img src=.*?(?:>|\/>)/gi;
       const imageList = content.match(imgReg);
-      // console.log('imageList :>> ', imageList)
-      imageList?.forEach((item) => {
-        // console.log('item', item)
-        RegExp(/src="(.*?)"/).exec(item);
-        const src = RegExp.$1;
-        // console.log('src', src)
-        RegExp(/\?filename=(.*?)/).exec(src);
+      
+      if (!imageList) return content;
+      
+      imageList.forEach((item) => {
+        const srcMatch = item.match(/src="([^"]+)"/);
+        if (!srcMatch) return;
+        
+        const src = srcMatch[1];
         const match = src.match(/filename=([^&]*)/);
         const title = match ? match[1] : "暂无标题";
-        // console.log("title", title)
-        // const newView = `<div class="source-card" id="content-box" data-type="image" data-title="${title}" data-src="${src}"><svg class="icon-image" aria-hidden="true"><use xlink:href="#icon-imagecontent" /></svg><div>${title}</div></div>`;
+        
         const newView = `<br><br><div class="source-card" id="content-box" data-type="image" data-title="${title}" data-src="${src}"><img src="${src}" alt="${title}" /></div>`;
         content = content.replace(item, newView);
       });
+      
       return content;
     },
+    
+    /**
+     * 提取内容中的段落
+     * @param {HTMLElement} contentDiv - 内容元素
+     * @returns {Array} - 段落数组
+     */
     extractParagraphs(contentDiv) {
-      // 从内容中提取所有段落和标题
-      const result = [];
-
-      // 使用 innerHTML 保留 HTML 标签
       const html = contentDiv.innerHTML;
-
-      // 按段落分割
       const paragraphs = html.split("<br><br>");
-
-      paragraphs.forEach((paragraph) => {
-        // 移除开头和结尾的空白
-        const trimmed = paragraph.trim();
-        if (!trimmed) return;
-        // 检查是否包含图片内容的标记
-        else {
-          result.push({
-            isTitle: false,
-            content: trimmed,
-          });
-        }
-      });
-
-      return result;
+      
+      return paragraphs
+        .map(paragraph => paragraph.trim())
+        .filter(Boolean)
+        .map(content => ({
+          isTitle: false,
+          content
+        }));
     },
 
+    /**
+     * 生成目录
+     */
     generateTableOfContents() {
-      this.tableOfContents = [];
-      let pageCount = 3; // 从第3页开始计算（封面是1，目录是2）
-
+      const pageCount = 3; // 从第3页开始计算（封面是1，目录是2）
+      
       // 提取所有章节标题及其所在页面
-      const titlePages = [];
-      let currentTitle = "";
-
-      // 遍历所有页面，找出每个章节标题所在的页码
-      this.pages.forEach((pageContent, index) => {
+      this.tableOfContents = this.pages.reduce((acc, pageContent, index) => {
         const titleMatch = pageContent.match(/<h2>(.*?)<\/h2>/);
         if (titleMatch) {
-          currentTitle = titleMatch[1];
-          titlePages.push({
-            title: currentTitle,
+          acc.push({
+            title: titleMatch[1],
             page: pageCount + index,
           });
         }
-      });
-
-      // 设置目录内容
-      this.tableOfContents = titlePages;
+        return acc;
+      }, []);
     },
 
+    /**
+     * 初始化turn.js
+     */
     initTurnJS() {
       const options = {
-        width: 800,
-        height: 500,
+        width: BOOK_CONFIG.width,
+        height: BOOK_CONFIG.height,
         autoCenter: true,
         display: "double",
         acceleration: true,
         elevation: 50,
         gradients: true,
-        // 确保中间显示自然的书脊效果
-        duration: 600, // 翻页动画持续时间
-        // 为了让阴影效果更好地显示，增大页面之间的间隙
-        margin: 0, // 页面之间的间隙
+        duration: BOOK_CONFIG.animationDuration,
+        margin: 0,
         when: {
           turning: (e, page) => {
             this.currentPage = page;
-            // 当页码大于1时，表示书本已翻开
             this.isBookOpened = page > 1;
           },
           turned: (e, page) => {
             this.currentPage = page;
-            // 当页码大于1时，表示书本已翻开
             this.isBookOpened = page > 1;
           },
         },
       };
 
-      // Using the global jQuery and turn.js from the CDN
       if (window.$ && this.$refs.turnBook) {
         this.turnInstance = window.$(this.$refs.turnBook).turn(options);
       } else {
@@ -404,12 +491,18 @@ export default {
       }
     },
 
+    /**
+     * 翻到上一页
+     */
     prevPage() {
       if (this.turnInstance) {
         window.$(this.$refs.turnBook).turn("previous");
       }
     },
 
+    /**
+     * 翻到下一页
+     */
     nextPage() {
       if (this.turnInstance) {
         window.$(this.$refs.turnBook).turn("next");
@@ -435,7 +528,7 @@ export default {
   height: 500px;
   position: relative;
   perspective: 1500px;
-  margin-bottom: 20px; /* 保留一些空间 */
+  margin-bottom: 20px;
 }
 
 /* 书本左侧的堆叠书页效果 - 只在书本打开时显示 */
@@ -443,9 +536,9 @@ export default {
   content: '';
   position: absolute;
   bottom: 0;
-  left: -20px; /* 向左延伸 */
-  width: 20px; /* 左侧厚度 */
-  height: 500px; /* 与书本高度一致 */
+  left: -20px;
+  width: 20px;
+  height: 500px;
   background: linear-gradient(to right, #d8d8d8, #e8e8e8);
   box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
   z-index: -2;
@@ -458,9 +551,9 @@ export default {
   content: '';
   position: absolute;
   bottom: 0;
-  right: -20px; /* 向右延伸 */
-  width: 20px; /* 右侧厚度 */
-  height: 500px; /* 与书本高度一致 */
+  right: -20px;
+  width: 20px;
+  height: 500px;
   background: linear-gradient(to left, #d8d8d8, #e8e8e8);
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
   z-index: -2;
@@ -579,7 +672,6 @@ export default {
 }
 
 .toc {
-  /* padding: 30px; */
   font-size: 16px;
 }
 

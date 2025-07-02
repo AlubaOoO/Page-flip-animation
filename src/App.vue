@@ -1,31 +1,16 @@
 <template>
   <div id="app">
     <h1>Vue 书本翻页动画</h1>
-    
-    <div class="mode-selector">
-      <!-- <label>
-        <input type="radio" v-model="flipMode" value="custom" />
-        自定义翻页效果
-      </label> -->
-      <label>
-        <input type="radio" v-model="flipMode" value="turnjs" />
-        Turn.js 翻页效果
-      </label>
-    </div>
-    
-    <BookFlip v-if="flipMode === 'custom'" />
-    <TurnBookFlip v-if="flipMode === 'turnjs'" />
+    <TurnBookFlip />
   </div>
 </template>
 
 <script>
-import BookFlip from './components/BookFlip.vue'
 import TurnBookFlip from './components/TurnBookFlip.vue'
 
 export default {
   name: 'App',
   components: {
-    BookFlip,
     TurnBookFlip
   },
   data() {
