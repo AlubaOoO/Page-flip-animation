@@ -1,7 +1,7 @@
 <template>
   <div class="turn-book-container">
-    <div id="book" ref="turnBook">
-      <div class="page cover">家谱故事</div>
+    <div id="book" ref="turnBook" :class="{ 'book-opened': isBookOpened }">
+      <div class="page cover">story</div>
       <div class="page toc">
         <h2>目录</h2>
         <div
@@ -48,6 +48,7 @@ export default {
       pages: [],
       tableOfContents: [],
       sections: [],
+      isBookOpened: false,
     };
   },
   mounted() {
@@ -369,12 +370,20 @@ export default {
         acceleration: true,
         elevation: 50,
         gradients: true,
+        // 确保中间显示自然的书脊效果
+        duration: 600, // 翻页动画持续时间
+        // 为了让阴影效果更好地显示，增大页面之间的间隙
+        margin: 0, // 页面之间的间隙
         when: {
           turning: (e, page) => {
             this.currentPage = page;
+            // 当页码大于1时，表示书本已翻开
+            this.isBookOpened = page > 1;
           },
           turned: (e, page) => {
             this.currentPage = page;
+            // 当页码大于1时，表示书本已翻开
+            this.isBookOpened = page > 1;
           },
         },
       };
@@ -417,6 +426,27 @@ export default {
   height: 500px;
   position: relative;
   perspective: 1500px;
+}
+
+/* 默认情况下不显示阴影 */
+#book::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 100%;
+}
+
+/* 只有当书本打开时才显示阴影 */
+#book.book-opened::after {
+  background: linear-gradient(to right, 
+    rgba(0, 0, 0, 0.00) 0%, 
+    rgba(0, 0, 0, 0.1) 48%, 
+    rgba(0, 0, 0, 0.1) 52%, 
+    rgba(0, 0, 0, 0.00) 100%);
+  z-index: 11;
 }
 
 .page {
