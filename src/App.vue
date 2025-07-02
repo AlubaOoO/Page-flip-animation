@@ -3,10 +3,10 @@
     <h1>Vue 书本翻页动画</h1>
     
     <div class="mode-selector">
-      <label>
+      <!-- <label>
         <input type="radio" v-model="flipMode" value="custom" />
         自定义翻页效果
-      </label>
+      </label> -->
       <label>
         <input type="radio" v-model="flipMode" value="turnjs" />
         Turn.js 翻页效果
@@ -30,7 +30,7 @@ export default {
   },
   data() {
     return {
-      flipMode: 'custom'
+      flipMode: 'turnjs'
     }
   }
 }
