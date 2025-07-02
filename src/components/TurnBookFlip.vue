@@ -1,6 +1,14 @@
 <template>
   <div class="turn-book-container">
     <div id="book" ref="turnBook" :class="{ 'book-opened': isBookOpened }">
+      <div v-if="isBookOpened" class="page-stack-left">
+        <div class="layer layer-3"></div>
+        <div class="layer layer-4"></div>
+      </div>
+      <div v-if="isBookOpened" class="page-stack-right">
+        <div class="layer layer-3"></div>
+        <div class="layer layer-4"></div>
+      </div>
       <div class="page cover">story</div>
       <div class="page toc">
         <h2>目录</h2>
@@ -419,6 +427,7 @@ export default {
   justify-content: center;
   height: 100%;
   padding: 40px 0;
+  position: relative;
 }
 
 #book {
@@ -426,6 +435,107 @@ export default {
   height: 500px;
   position: relative;
   perspective: 1500px;
+  margin-bottom: 20px; /* 保留一些空间 */
+}
+
+/* 书本左侧的堆叠书页效果 - 只在书本打开时显示 */
+#book.book-opened .page-stack-left {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -20px; /* 向左延伸 */
+  width: 20px; /* 左侧厚度 */
+  height: 500px; /* 与书本高度一致 */
+  background: linear-gradient(to right, #d8d8d8, #e8e8e8);
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+  z-index: -2;
+  border-left: 1px solid #ccc;
+  border-radius: 2px 0 0 2px;
+}
+
+/* 书本右侧的堆叠书页效果 - 只在书本打开时显示 */
+#book.book-opened .page-stack-right {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: -20px; /* 向右延伸 */
+  width: 20px; /* 右侧厚度 */
+  height: 500px; /* 与书本高度一致 */
+  background: linear-gradient(to left, #d8d8d8, #e8e8e8);
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+  z-index: -2;
+  border-right: 1px solid #ccc;
+  border-radius: 0 2px 2px 0;
+}
+
+/* 多层堆叠效果 - 左侧 */
+#book.book-opened .page-stack-left::before,
+#book.book-opened .page-stack-left::after,
+#book.book-opened .page-stack-left .layer {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, #d0d0d0, #e0e0e0);
+  z-index: -1;
+  border-left: 1px solid #ccc;
+  border-radius: 2px 0 0 2px;
+}
+
+#book.book-opened .page-stack-left::after {
+  background: linear-gradient(to right, #c8c8c8, #d8d8d8);
+  left: -6px;
+  z-index: -2;
+}
+
+/* 多层堆叠效果 - 右侧 */
+#book.book-opened .page-stack-right::before,
+#book.book-opened .page-stack-right::after,
+#book.book-opened .page-stack-right .layer {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to left, #d0d0d0, #e0e0e0);
+  z-index: -1;
+  border-right: 1px solid #ccc;
+  border-radius: 0 2px 2px 0;
+}
+
+#book.book-opened .page-stack-right::after {
+  background: linear-gradient(to left, #c8c8c8, #d8d8d8);
+  right: -6px;
+  z-index: -2;
+}
+
+/* 第3层和第4层堆叠 - 左侧 */
+#book.book-opened .page-stack-left .layer-3 {
+  background: linear-gradient(to right, #c0c0c0, #d0d0d0);
+  left: -9px;
+  z-index: -3;
+}
+
+#book.book-opened .page-stack-left .layer-4 {
+  background: linear-gradient(to right, #b8b8b8, #c8c8c8);
+  left: -12px;
+  z-index: -4;
+}
+
+/* 第3层和第4层堆叠 - 右侧 */
+#book.book-opened .page-stack-right .layer-3 {
+  background: linear-gradient(to left, #c0c0c0, #d0d0d0);
+  right: -9px;
+  z-index: -3;
+}
+
+#book.book-opened .page-stack-right .layer-4 {
+  background: linear-gradient(to left, #b8b8b8, #c8c8c8);
+  right: -12px;
+  z-index: -4;
 }
 
 /* 默认情况下不显示阴影 */
