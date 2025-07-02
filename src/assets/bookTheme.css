@@ -1,0 +1,58 @@
+/* 亮色主题变量 */
+.turn-book-container {
+  --text-color: #333;
+  --bg-color: #fff;
+  --bg-gradient: linear-gradient(135deg, #fff, #f0f0f0);
+  --cover-bg: linear-gradient(135deg, #f5e3aa, #e8d090);
+  --btn-bg: linear-gradient(to bottom, #42b983, #3aa876);
+  --btn-hover-bg: linear-gradient(to bottom, #3aa876, #33946a);
+  --border-color: #ccc;
+  --toolbar-bg: #f9f9f9;
+  --toolbar-border: #e0e0e0;
+  --stack-edge-color1: #d8d8d8;
+  --stack-edge-color2: #e8e8e8;
+  --stack-layer1: linear-gradient(to right, #d0d0d0, #e0e0e0);
+  --stack-layer2: linear-gradient(to right, #c8c8c8, #d8d8d8);
+  --stack-layer3: linear-gradient(to right, #c0c0c0, #d0d0d0);
+  --stack-layer4: linear-gradient(to right, #b8b8b8, #c8c8c8);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-color);
+}
+
+/* 暗色主题变量 */
+.turn-book-container.dark-theme {
+  --text-color: #e0e0e0;
+  --bg-color: #252525;
+  --bg-gradient: linear-gradient(135deg, #252525, #1a1a1a);
+  --cover-bg: linear-gradient(135deg, #4a4535, #2e2b20);
+  --btn-bg: linear-gradient(to bottom, #2e7856, #205640);
+  --btn-hover-bg: linear-gradient(to bottom, #205640, #173d2d);
+  --border-color: #444;
+  --toolbar-bg: #333;
+  --toolbar-border: #555;
+  --stack-edge-color1: #333;
+  --stack-edge-color2: #3a3a3a;
+  --stack-layer1: linear-gradient(to right, #2a2a2a, #333333);
+  --stack-layer2: linear-gradient(to right, #252525, #2e2e2e);
+  --stack-layer3: linear-gradient(to right, #202020, #292929);
+  --stack-layer4: linear-gradient(to right, #1a1a1a, #242424);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* 基础容器样式 */
+.turn-book-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 0;
+  position: relative;
+}
+
+/* 测试容器 */
+.test-container {
+  position: absolute;
+  visibility: hidden;
+  z-index: -1;
+} 
