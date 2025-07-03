@@ -1,16 +1,32 @@
 <template>
   <div id="main">
-    <TurnBookFlip />
+    <h1>书本翻页效果演示</h1>
+    
+    <div class="mode-selector">
+      <label>
+        <input type="radio" v-model="flipMode" value="turnjs">
+        TurnJS 实现
+      </label>
+      <label>
+        <input type="radio" v-model="flipMode" value="stpageflip">
+        StPageFlip 实现
+      </label>
+    </div>
+    
+    <TurnBookFlip v-if="flipMode === 'turnjs'" />
+    <StPageFlipExample v-if="flipMode === 'stpageflip'" />
   </div>
 </template>
 
 <script>
 import TurnBookFlip from './components/TurnBookFlip.vue'
+import StPageFlipExample from './components/StPageFlipExample.vue'
 
 export default {
   name: 'App',
   components: {
-    TurnBookFlip
+    TurnBookFlip,
+    StPageFlipExample
   },
   data() {
     return {
