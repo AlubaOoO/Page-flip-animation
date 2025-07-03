@@ -33,6 +33,7 @@
 
 <script>
 import { initTurnJS, cleanupTurnJS } from '../../utils/turnJSUtils';
+import { BOOK_CONFIG } from '../../utils/constants';
 
 export default {
   name: 'BookContent',
@@ -113,21 +114,58 @@ export default {
           }
         }
       };
+
+      // 确保先清理旧实例
+      this.cleanupTurnJS();
       
       // 延迟初始化，确保DOM已更新
       setTimeout(() => {
-        this.turnInstance = initTurnJS(this.$refs.bookElement, callbacks);
-      }, 300);
+        // 检查组件是否仍然挂载
+        if (this.$refs.bookElement) {
+          // 确保有足够的页面内容
+          if (this.pages && this.pages.length > 0) {
+            this.turnInstance = initTurnJS(this.$refs.bookElement, callbacks);
+            
+            // 如果初始化成功，保持当前页面
+            if (this.turnInstance && this.currentPage > 1) {
+              try {
+                window.$(this.$refs.bookElement).turn("page", this.currentPage);
+              } catch (err) {
+                console.error("Error setting page after init:", err);
+              }
+            }
+          } else {
+            console.warn("No pages available for Turn.js initialization");
+          }
+        }
+      }, 500);
     },
 
     // 监听窗口大小变化
     handleResize() {
       console.log('handleResize');
-      // 重新初始化
-      // TODO:重新初始化有报错
-      setTimeout(() => {
-        this.initializeTurnJS();
-      }, 1000);
+      // 使用 resize 方法而不是重新初始化
+      try {
+        if (this.turnInstance && window.$) {
+          // 尝试使用 resize 方法调整大小而不是完全重新初始化
+          window.$(this.$refs.bookElement).turn('size', 
+            BOOK_CONFIG.width, 
+            BOOK_CONFIG.height
+          );
+        } else {
+          // 如果没有实例，才重新初始化
+          setTimeout(() => {
+            this.initializeTurnJS();
+          }, 500);
+        }
+      } catch (err) {
+        console.error("Error in handleResize:", err);
+        // 如果调整大小失败，则清理并重新初始化
+        this.cleanupTurnJS();
+        setTimeout(() => {
+          this.initializeTurnJS();
+        }, 800);
+      }
     },
     
     reinitializeTurnJS() {
